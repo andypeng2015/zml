@@ -1,6 +1,7 @@
 const std = @import("std");
 const zml = @import("zml");
 const asynk = @import("async");
+const Tracer = zml.tools.Tracer;
 
 /// Model definition
 const Layer = struct {
@@ -35,6 +36,30 @@ pub fn asyncMain() !void {
     defer context.deinit();
 
     const platform = context.autoPlatform(.{});
+    // version: u32 = 0,
+    // device_type: ProfileOptions.DeviceType = @enumFromInt(0),
+    // include_dataset_ops: bool = false,
+    // host_tracer_level: u32 = 0,
+    // device_tracer_level: u32 = 0,
+    // python_tracer_level: u32 = 0,
+    // enable_hlo_proto: bool = false,
+    // start_timestamp_ns: u64 = 0,
+    // duration_ms: u64 = 0,
+    // repository_path: ManagedString = .Empty,
+    // trace_options: ?ProfileOptions.TraceOptions = null,
+    var profiler = platform.getProfiler(.{
+        .host_tracer_level = 3,
+        .device_tracer_level = 3,
+        .python_tracer_level = 3,
+    });
+    defer profiler.deinit();
+    // LD_LIBRARY_PATH= XLA_FLAGS="--xla_gpu_enable_command_buffer=" bazel run -c opt --@zml//runtimes:cpu=false --@zml//runtimes:cuda=true --run_under="sudo /opt/nvidia/nsight-systems-cli/2025.1.1/bin/nsys profile -t cuda,syscall,nvtx,cublas,cublas-verbose,cusparse,cusparse-verbose,cudnn --gpu-metrics-devices='cuda-visible' --cuda-memory-usage true --cuda-event-trace=false --backtrace=dwarf --cuda-graph-trace=node --capture-range=cudaProfilerApi --capture-range-end=stop" //simple_layer
+    // cp bazel-bin/simple_layer/simple_layer.runfiles/_main/trace.json .
+    // LD_LIBRARY_PATH= XLA_FLAGS="--xla_gpu_enable_command_buffer=" bazel run -c opt --@zml//runtimes:cpu=false --@zml//runtimes:cuda=true //simple_layer
+    const tracer = Tracer.init("ai.zml.examples.simple_layer");
+    defer tracer.deinit();
+    // profiler.start();
+
     context.printAvailablePlatforms(platform);
 
     // Our weights and bias to use
@@ -74,6 +99,7 @@ pub fn asyncMain() !void {
     const compiled = try compilation.awaitt();
 
     // pass the model weights to the compiled module to create an executable module
+    const frame = tracer.frameStart("run____");
     var executable = compiled.prepare(model_weights);
     defer executable.deinit();
 
@@ -86,6 +112,7 @@ pub fn asyncMain() !void {
     defer input_buffer.deinit();
 
     // call our executable module
+    tracer.event("Call model");
     var result: zml.Buffer = executable.call(.{input_buffer});
     defer result.deinit();
 
@@ -95,4 +122,9 @@ pub fn asyncMain() !void {
         "\nThe result of {d} * {d} + {d} = {d}\n",
         .{ &weights, &input, &bias, cpu_result.items(f16) },
     );
+    tracer.frameEnd(frame, "run____");
+
+    // profiler.stop();
+
+    // try profiler.dumpAsJsonTo(allocator, std.fs.cwd(), "trace.json");
 }

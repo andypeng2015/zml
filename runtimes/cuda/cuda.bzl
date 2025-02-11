@@ -26,6 +26,34 @@ cc_import(
 )
 """.format(name = repr(name), shared_library = repr(shared_library), deps = repr(deps))
 
+def _cc_import_with_h(name, hdrs, shared_library, deps = []):
+    return """\
+cc_import(
+    name = {name},
+    hdrs = {hdrs},
+    shared_library = {shared_library},
+    deps = {deps},
+    visibility = ["@libpjrt_cuda//:__subpackages__"],
+)
+""".format(name = repr(name), hdrs = repr(hdrs), shared_library = repr(shared_library), deps = repr(deps))
+
+def _cc_import_with_glob(name, hdrs_glob, shared_library, deps = []):
+    return """\
+filegroup(
+    name = "{name}_files",
+    srcs = glob(["{hdrs_glob}"]),
+    visibility = ["//visibility:public"],
+)
+
+cc_import(
+    name = "{name}",
+    shared_library = {shared_library},
+    hdrs = [":{name}_files"],
+    deps = {deps},
+    visibility = ["//visibility:public"],
+)
+""".format(name = name, hdrs_glob = hdrs_glob, shared_library = repr(shared_library), deps = repr(deps))
+
 def _cc_import_static(name, static_library, deps = []):
     return """\
 cc_import(
@@ -44,6 +72,27 @@ CUDA_PACKAGES = {
     "cuda_cupti": _cc_import(
         name = "cupti",
         shared_library = "lib/libcupti.so.12",
+    ),
+    # "cuda_nvtx": _cc_import_with_h(
+    #     name = "nvtx",
+    #     hdrs = ["include/nvtx3/*.h"],
+    #     shared_library = "lib/libnvToolsExt.so.1",
+    # ),
+    # "cuda_nvtx": _cc_import_with_h(
+    #     name = "nvtx",
+    #     hdrs = [
+    #         "include/nvtx3/nvToolsExt.h",
+    #         "include/nvtx3/nvtxDetail/nvtxLinkOnce.h",
+    #         "include/nvtx3/nvtxDetail/nvtxTypes.h",
+    #         "include/nvtx3/nvtxDetail/nvtxImpl.h",
+    #         "include/nvtx3/nvtxDetail/nvtxInitDecls.h",
+    #     ],
+    #     shared_library = "lib/libnvToolsExt.so.1",
+    # ),
+    "cuda_nvtx": _cc_import_with_glob(
+        name = "nvtx",
+        hdrs_glob = "include/nvtx3/**/*.h",
+        shared_library = "lib/libnvToolsExt.so.1",
     ),
     "libcufft": _cc_import(
         name = "cufft",
