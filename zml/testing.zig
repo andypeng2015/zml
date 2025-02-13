@@ -26,6 +26,12 @@ pub fn env() zml.Platform {
 
 var _test_compile_opts: zml.CompilationOptions = .{};
 
+pub fn mlxSkipTest(platform: zml.Platform) !void {
+    if (platform.target == .mlx) {
+        return error.SkipZigTest;
+    }
+}
+
 /// In neural network we generally care about the relative precision,
 /// but on a given dimension, if the output is close to 0, then the precision
 /// don't matter as much.
@@ -100,7 +106,10 @@ pub fn expectClose(left_: anytype, right_: anytype, tolerance: f32) !void {
         },
         inline .bool, .u4, .u8, .u16, .u32, .u64, .i4, .i8, .i16, .i32, .i64 => |t| {
             const T = t.toZigType();
-            return std.testing.expectEqualSlices(T, left.items(T), right.items(T));
+            std.testing.expectEqualSlices(T, left.items(T), right.items(T)) catch |e| {
+                std.debug.print("output: {any}\n", .{right.items(T)});
+                return e;
+            };
         },
         .c64, .c128 => @panic("TODO: support comparison of complex"),
     }

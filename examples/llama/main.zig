@@ -148,13 +148,13 @@ pub fn asyncMain() !void {
 
     const allocator = std.heap.c_allocator;
 
-    const tmp = try std.fs.openDirAbsolute("/tmp", .{});
-    try tmp.makePath("zml/llama/cache");
+    // const tmp = try std.fs.openDirAbsolute("/tmp", .{});
+    // try tmp.makePath("zml/llama/cache");
     var context = try zml.Context.init();
     defer context.deinit();
 
     const compilation_options = zml.CompilationOptions{
-        .xla_dump_to = "/tmp/zml/llama",
+        // .xla_dump_to = "/tmp/zml/llama",
         .sharding_enabled = true,
     };
 
