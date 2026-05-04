@@ -17,17 +17,7 @@ pub const Backend = enum {
 
     pub fn auto(platform: *const zml.Platform) Backend {
         return switch (platform.target) {
-            .cuda => b: {
-                const first_device = platform.devices[0].pjrt_device;
-
-                if (zml.platform.cuda.tryGetComputeCapabilities(platform, first_device)) |cc| {
-                    if (std.mem.eql(u8, cc, "9.0")) {
-                        break :b .cuda_fa3;
-                    }
-                }
-
-                break :b .cuda_fa2;
-            },
+            .cuda => .triton,
             .rocm => .triton,
             .tpu => .mosaic_tpu,
             else => stdx.debug.panic("Paged attention is not supported on {s} yet", .{@tagName(platform.target)}),
